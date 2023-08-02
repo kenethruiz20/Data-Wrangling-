@@ -81,11 +81,12 @@ print(moda_por_vector)
 ```
 # problema 3
 ```{r}
+library(readr)
+
 ruta <- "C:/Users/Keneth Ruiz/OneDrive/Escritorio/Datasetlab1/INE_PARQUE_VEHICULAR_080219.txt"
-datos <- read_delim(ruta, delim = "\t", show_col_types = FALSE)
+datos <- read_delim(ruta, delim = '|', show_col_types = FALSE)
 
 head(datos)
-
 
 ```
 
