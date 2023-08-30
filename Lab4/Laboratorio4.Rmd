@@ -1,0 +1,83 @@
+---
+title: "Laboratorio4"
+author: "Keneth Ruiz"
+date: "2023-08-25"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+install.packages("readxl")
+install.packages("ggplot2")
+```
+
+```{r}
+library(ggplot2)
+library(readxl)
+```
+
+```{r}
+# Especificar el nombre del archivo Excel
+archivo_excel <- "lab4_datos.xlsx"
+
+# Cargar el archivo Excel
+datos <- read_excel(archivo_excel)
+```
+
+
+```{r}
+## ¿que está afectando el flujo de caja?
+Obejtivo: Brindar mas informacion acerca de que hace que disminuya el flujo de caja y que soluciones se pueden brindar al respecto.
+Audiencia: Junta Directiva (Perdidas & Ganacias)
+Impacto:
+ETA: 8 dias
+```
+
+```{r}
+##Supuestos
+
+*/ faltante* = segundos envios
+
+```
+
+```{r}
+## Hipotesis: Los creditos largos afectan el flujo de caja.
+Un dato que nos pareció importante que está afectando el flujo de caja es el tipo de crédito que se está dando a los clientes. Según los expertos los créditos más largos son los más peligrosos porque significa que el dinero no va a entrar en *juego* durante este tiempo. Segun los datos proporcionados los creditos de **30 días** represetan un **35.37%** del total, los de **60 días** representan un **34.31%** y los créditos de **90 días** representan un **30.32%** del total, nosotros creemos que este factor es el que esta afectando al flujo de caja porque hay muchos créditos a 60 y 90 días, lo cual significa que estaremos gastanto dinero que aún no tenemos durante ese plazo. Recomendamos disminuir los créditos de 90 días para que el flujo de caja esté más activo.
+
+```
+
+```{r}
+library(ggplot2)
+library(scales)
+
+# Supongamos que tienes un dataframe llamado 'datos' con la columna 'CREDITO'
+
+# Calcular los porcentajes de cada tipo de crédito
+porcentaje_30 <- sum(datos$CREDITO == 30) / length(datos$CREDITO) * 100
+porcentaje_60 <- sum(datos$CREDITO == 60) / length(datos$CREDITO) * 100
+porcentaje_90 <- sum(datos$CREDITO == 90) / length(datos$CREDITO) * 100
+
+# Crear un dataframe para el gráfico de pastel
+data_porcentajes <- data.frame(Tipo_Credito = c("30 días", "60 días", "90 días"),
+                               Porcentaje = c(porcentaje_30, porcentaje_60, porcentaje_90))
+
+# Crear el gráfico de pastel con etiquetas de porcentaje
+pie_chart <- ggplot(data = data_porcentajes,
+                    aes(x = "", y = Porcentaje, fill = Tipo_Credito)) +
+  geom_bar(stat = "identity", width = 1) +
+  geom_text(aes(label = scales::percent(Porcentaje / 100)), position = position_stack(vjust = 0.5)) +
+  coord_polar(theta = "y") +
+  theme_void() +
+  labs(title = "Porcentaje de Créditos por Tipo") +
+  theme(legend.position = "right")
+
+# Mostrar el gráfico de pastel
+print(pie_chart)
+
+```
+
+
+
