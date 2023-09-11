@@ -106,16 +106,16 @@ A. De los clientes que están en más de un país,¿cuál cree que es el más re
 library(readr)
 library(dplyr)
 
-# Cargamos los datos
+# Cargamos los datos del excel que esta en la misma carpeta.
 parcial_anonimo <- read_rds("parcial_anonimo.rds")
 
-# Identificamos los clientes que están en más de un país
+# clientes que hay en más de un país
 clientes_multinacionales <- parcial_anonimo %>%
   group_by(Cliente) %>%
   summarise(paises_distintos = n_distinct(Pais)) %>%
   filter(paises_distintos > 1)
 
-# Ahora, encontramos el cliente más rentable entre los multinacionales
+# cliente más rentable entre los multinacionales
 cliente_mas_rentable <- parcial_anonimo %>%
   filter(Cliente %in% clientes_multinacionales$Cliente) %>%
   group_by(Cliente) %>%
@@ -123,7 +123,7 @@ cliente_mas_rentable <- parcial_anonimo %>%
   arrange(desc(total_vendido)) %>%
   slice(1)
 
-# Mostramos el cliente más rentable
+# cliente más rentable
 cliente_mas_rentable
 
 ```
@@ -133,20 +133,20 @@ El cliente "a17a7558" se considera el más rentable debido a que ha generado ven
 B. Estrategia de negocio ha decidido que ya no operará en aquellos territorios cuyas pérdidas sean "considerables". Bajo su criterio, ¿cuáles son estos territorios y por qué ya no debemos operar ahí?
 
 ```{r}
-# Filtrar los datos para obtener solo las pérdidas (Ventas negativas)
+# Filtrar los datos para obtener solo las pérdidas 
 territorios_con_perdidas <- parcial_anonimo %>%
   filter(Venta < 0)
 
-# Calcular el total de pérdidas por territorio
+# Hacer el calculo de el total de pérdidas que hay por cada territorio
 perdidas_por_territorio <- territorios_con_perdidas %>%
   group_by(Pais) %>%
   summarise(total_perdido = sum(Venta))
 
-# Ordenar los territorios por pérdidas descendentes
+# Ordenar los territorios por pérdidas de manera descendiente
 perdidas_por_territorio <- perdidas_por_territorio %>%
   arrange(desc(total_perdido))
 
-# Mostrar los territorios con pérdidas considerables
+# territorios con pérdidas considerables
 perdidas_por_territorio
 
 ```
