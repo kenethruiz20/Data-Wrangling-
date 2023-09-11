@@ -102,7 +102,7 @@ Extra: ¿Cuántos posibles exámenes de 5 preguntas se pueden realizar utilizand
 
 A. De los clientes que están en más de un país,¿cuál cree que es el más rentable y por qué?
 
-```{r}
+```{r, cache =TRUE}
 library(readr)
 library(dplyr)
 
@@ -132,7 +132,7 @@ El cliente "a17a7558" se considera el más rentable debido a que ha generado ven
 
 B. Estrategia de negocio ha decidido que ya no operará en aquellos territorios cuyas pérdidas sean "considerables". Bajo su criterio, ¿cuáles son estos territorios y por qué ya no debemos operar ahí?
 
-```{r}
+```{r, cache = TRUE}
 # Filtrar los datos para obtener solo las pérdidas 
 territorios_con_perdidas <- parcial_anonimo %>%
   filter(Venta < 0)
@@ -241,7 +241,6 @@ print(ejemplo)
 ```
 
 ```{r}
-install.packages("gtools")
 library(gtools)
 
 N <- 10
