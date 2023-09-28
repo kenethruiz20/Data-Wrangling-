@@ -1,0 +1,209 @@
+---
+title: "Laboratorio 5"
+author: "Keneth Ruiz"
+date: "2023-09-26"
+output: rmarkdown::github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(lubridate)
+library(readxl)
+library(dplyr)
+library(nycflights13)
+library(ggplot2)
+library(forecast)
+
+```
+
+## Parte 1
+
+```{r Parte 1: Predecir un eclipse solar}
+
+eclipse_inicial <- dmy_hms('21 aug 2017 18:26:40')
+synodic_month <- days(29)+hours(12)+minutes(44)+seconds(3)
+saros <- synodic_month * 223
+
+prox_eclipse <- eclipse_inicial %m+% saros
+prox_eclipse
+
+```
+
+### PARTE 2
+
+```{r}
+#Pura limpieza de datos con las fechas
+data <- read_excel("data.xlsx")
+data <- data[data$Cod != 0,]
+convertir_fecha <- function(fecha) {
+  tryCatch(
+    {
+      return(as.Date(fecha, format = "%d-%m-%y"))
+    },
+    error = function(e) {
+      return(NA)  
+    }
+  )
+}
+data$`Fecha Creación` <- convertir_fecha(data$`Fecha Creación`)
+data$`Fecha Final` <- convertir_fecha(data$`Fecha Final`)
+data <- data[!is.na(data$`Fecha Creación`), ]
+
+```
+
+```{r}
+#Pregunta 2.1
+meses_con_mas_llamadas <- data %>%
+  group_by(Cod, Mes = month(`Fecha Creación`, label = TRUE)) %>%
+  summarize(Cantidad = sum(Call), .groups = "drop") %>%
+  arrange(Cod, desc(Cantidad))
+print(meses_con_mas_llamadas)
+```
+
+```{r}
+# Pregunta 2.2: Qué día de la semana es el más ocupado
+dia_ocupado <- data %>%
+  mutate(dia_semana = weekdays(`Fecha Creación`)) %>%
+  group_by(dia_semana) %>%
+  summarize(Cantidad = n(), .groups = 'drop') %>%
+  arrange(desc(Cantidad))
+
+# Imprimir los resultados en la terminal
+print(dia_ocupado)
+
+```
+
+```{r}
+# Pregunta 2.3: Qué mes es el más ocupado
+meses_ocupados <- data %>%
+  group_by(Mes = month(`Fecha Creación`, label = TRUE)) %>%
+  summarize(Cantidad = n()) %>%
+  arrange(desc(Cantidad))
+
+# Imprimir los resultados en la terminal
+print(meses_ocupados)
+
+```
+
+```{r}
+#pregunta 2.4 Crear un gráfico de líneas para visualizar tendencias estacionales
+ggplot(data, aes(x = `Fecha Creación`, y = Call)) +
+  geom_line() +
+  labs(
+    title = "Tendencia Estacional en la Cantidad de Llamadas",
+    x = "Fecha",
+    y = "Cantidad de Llamadas"
+  )
+# Realizar un análisis de descomposición de series temporales
+library(forecast)
+
+ts_data <- ts(data$Call, frequency = 12)  # Suponiendo datos mensuales
+decomp <- decompose(ts_data)
+
+# Visualizar los componentes de la descomposición
+plot(decomp)
+
+
+```
+
+```{r}
+# Pregunta 2.5: Cuántos minutos dura la llamada promedio
+data$duracion <- as.numeric(difftime(data$`Hora Final`, data$`Hora Creación`, units = "mins"))
+duracion_promedio <- mean(data$duracion[data$Call == 1], na.rm = TRUE)  
+cat("La llamada promedio dura:", duracion_promedio, "minutos\n")
+
+```
+
+```{r}
+# Redondear la duración de llamadas al minuto más cercano
+data$duracion_minutos <- round(data$duracion)
+
+# Crear una tabla de frecuencias
+tabla_frecuencias <- table(data$duracion_minutos)
+
+# Convertir la tabla en un data frame
+df_tabla_frecuencias <- as.data.frame(tabla_frecuencias)
+
+# Renombrar las columnas
+colnames(df_tabla_frecuencias) <- c("Tiempo de Llamada en Minutos", "Cantidad de Llamadas")
+
+# Imprimir la tabla de frecuencias
+print(df_tabla_frecuencias)
+
+
+```
+
+### PARTE 3
+
+```{r parte 3 signo zodiacal}
+#Pregunta 3.1
+obtener_signo_zodiacal_iso <- function(fecha_nacimiento) {
+  fecha <- ymd(fecha_nacimiento)
+  mes_dia <- month(fecha) * 100 + day(fecha)
+  
+  if ((mes_dia >= 321 && mes_dia <= 419)) {
+    return("Aries")
+  } else if (mes_dia >= 420 && mes_dia <= 520) {
+    return("Tauro")
+  } else if (mes_dia >= 521 && mes_dia <= 620) {
+    return("Géminis")
+  } else if (mes_dia >= 621 && mes_dia <= 722) {
+    return("Cáncer")
+  } else if (mes_dia >= 723 && mes_dia <= 822) {
+    return("Leo")
+  } else if (mes_dia >= 823 && mes_dia <= 922) {
+    return("Virgo")
+  } else if (mes_dia >= 923 && mes_dia <= 1022) {
+    return("Libra")
+  } else if (mes_dia >= 1023 && mes_dia <= 1121) {
+    return("Escorpio")
+  } else if (mes_dia >= 1122 && mes_dia <= 1221) {
+    return("Sagitario")
+  } else if (mes_dia >= 1222 || mes_dia <= 119) {
+    return("Capricornio")
+  } else if (mes_dia >= 120 && mes_dia <= 218) {
+    return("Acuario")
+  } else {
+    return("Piscis")
+  }
+}
+
+fecha_nacimiento_iso <- "2001-04-06" # Poner fecha de nacimiento en Formato ISO como fue visto en clase.
+signo_iso <- obtener_signo_zodiacal_iso(fecha_nacimiento_iso)
+cat("Tu signo zodiacal es:", signo_iso, "\n")
+
+```
+
+#Parte 4
+
+```{r 4: genere 4 nuevas columnas para cada variable con formato fecha y hora}
+# Parte 4.1
+formateo <- function(year, month, day, ttime) {
+  paste(year, month, day, ttime %/% 100, ttime %% 100, sep = ":")
+}
+cols <- flights %>% 
+  mutate(deptime = formateo(year, month, day, dep_time),
+         arrtime = formateo(year, month, day, arr_time),
+         schdarr = formateo(year, month, day, sched_arr_time),
+         schdep = formateo(year, month, day, sched_dep_time))
+
+# Selecciona las columnas deseadas
+cols %>% select(carrier, deptime, arrtime, schdarr, schdep)
+```
+
+```{r 4:Encuentre el delay total que existe en cada vuelo. El delay total se puede encontrar sumando el delay de la salida y el delay de la entrada.}
+
+#Parte 4.2
+
+delays <- flights %>%  select(flight ,dep_delay,arr_delay) %>% 
+  mutate(totalDelay= minutes(dep_delay+arr_delay)) %>% 
+  select(flight,totalDelay)
+
+
+head(delays)
+
+```
+
