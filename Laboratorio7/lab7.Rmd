@@ -1,260 +1,218 @@
 ---
-title: "Inversiones en Energía, S.A. de C.V""
+title: "Inversiones en Energía, S.A. de C.V"
 author: "Keneth Ruiz"
 date: "2023-10-10"
-output: rmarkdown::github_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+options(repos = c(CRAN = "https://cran.rstudio.com/"))
+
 ```
 
 ```{r}
-install.packages("tidyverse")
-install.packages("highcharter")
-install.packages("readr")
-install.packages("readxl")
+install.packages("RColorBrewer")
 install.packages("tidyr")
-install.packages("ggplot2")
-install.packages("reshape2")
+install.packages("dplyr")
 install.packages("lubridate")
-install.packages("writexl")
+install.packages("tidyverse")
+install.packages("reshape2")
+install.packages("readr")
+
 
 ```
 
 ```{r}
-library(tidyverse)
-library(highcharter)
-library(readr)
-library(readxl)
+library(RColorBrewer)
 library(tidyr)
-library(ggplot2)
-library(reshape2)
+library(dplyr)
 library(lubridate)
-library(writexl)
+library(tidyverse)
+library(reshape2)
+library(readr)
+coul <- brewer.pal(5, "Spectral") 
+
+```
+## LABORATORIO 7
+Inversiones en Energía, S.A. de C.V. ha tenido un gran 2017 con una utilidad superior a los US$1 Millones. Durante estos 9 meses del 2018, han tenido una baja del 25% con respecto al año anterior en su margen operativo y el gerente de operaciones ha sido despedido. Usted, como consultor independiente, ha contactado al nuevo gerente para ofrecerle un estudio del mercado como de la operación para que el siguiente año la empresa pueda crecer por encima del 10% con respecto al 2018.
+## Información General de Datos 
+- Para facilitar el proceso de análisis es necesario limpiar la data proporcionada ya que se encuentra desordenada. 
+```{r}
+data <- read.csv(file = "./c1.csv", header = TRUE)
+
+data <- data %>% gather(Camion_5:Moto, key="transporte", value="costo_total", Camion_5:Moto)
+data <- filter(data, costo_total != " Q-   ")
+
+data <- data %>% gather(directoCamion_5:directoMoto, key="transporte_costo_directo", value="costo_directo" ,directoCamion_5:directoMoto)
+data <- filter(data, costo_directo != " Q-   ")
+
+data <- data %>% gather(fijoCamion_5:fijoMoto, key="transporte_costo_fijo", value="costo_fijo", fijoCamion_5:fijoMoto)
+data <- filter(data, costo_fijo != " Q-   ")
+
+
+data <- data %>% gather(X5.30:X120., key="rangos", value="tiempo", X5.30:X120.)
+data <- filter(data, tiempo == " x ")
+
+
+
+data$Fecha <- parse_date_time(data$Fecha,orders="dmy")
+
+data$factura <- as.numeric(gsub("Q", "", data$factura))
+data$costo_total <- as.numeric(gsub("Q", "", data$costo_total))
+data$costo_directo <- as.numeric(gsub("Q", "", data$costo_directo))
+data$costo_fijo <- as.numeric(gsub("Q", "", data$costo_fijo))
+
+data <- data %>% 
+  mutate(Ganancia = factura-costo_total)
+
+data$Camion_5 <- NULL
+data$Pickup <- NULL
+data$Moto <- NULL
+data$directoCamion_5 <- NULL
+data$directoPickup <- NULL
+data$directoMoto <- NULL
+data$fijoCamion_5 <- NULL
+data$fijoPickup <- NULL
+data$fijoMoto <- NULL
+data$X5.30 <- NULL
+data$X30.45 <- NULL
+data$X45.75 <- NULL
+data$X75.120 <- NULL
+data$X120. <- NULL
+data$X23 <- NULL
+```
+
+```{r}
+head(data)
+```
+Fue posible detectar que existe una relación entre las columnas que indican el medio de transporte, las cuales son "Pickup", "Camion_5" y "Moto"; las columnas que representan los costos fijos y directos de los transportes antes mencionados y también una relación en las columnas que indican un intervalo de tiempo. 
+
+Para obtener una representación correcta de los datos mencionados, se generaron nuevas columnas que indican el costo final, costo directo, tiempo y transporte las cuales permitirán obtener  facilmente las respuestas a las preguntas sobre los estados de resultados y eficiencia de la forma de operar actual. 
+## Información
+
+## Tipos de Servicio Disponibles
+```{r}
+data %>% select(Cod) %>%distinct
+
+```
+- En la tabla anterior es posible observar los servicios que son proporcionados a los postes.
+## Transporte utilizado
+```{r}
+data %>% count(transporte) %>%distinct
+```
+- Existen 3 tipos de transportes que pueden ser utilizados para movilizarse hacia el poste que necesita servicio. Estos son: 
+    -Moto
+    -Camion
+    -Pickup
+## Origen
+```{r}
+data %>% select(origen) %>%distinct
+```
+## Pregunta 1: Estado de Resultados Breve 2017
+```{r}
+ventas_totales <- sum(data$factura)
+sprintf("Ventas Netas: %.2f", ventas_totales)
+costos <- sum(data$costo_total)
+sprintf("Costo Total: %.2f", costos)
+ganancia <- ventas_totales - costos
+sprintf("Utilidad Bruta: %.2f", ganancia)
+```
+
+-Para obtener el estado de resultados se realizó una sumatoria del total de las facturas generadas por la emmpresa, la cual dio un total de ventas de Q36,688,096.31
+
+-Para obtener los costos se sumaron los costos totales (los cuales se componen de costos directos más costos fijos), lo cual dio como resultado: Q28,174,019.31
+
+-Con los resultados de vetas totales y costos, fue posible determinar que la utilidad bruta de la empresa fue de Q8,514,077.00
+## Pregunta 2: Tarifario en el 2017 por Unidad
+- Para poder obtener el tarifario del 2017 por unidad, fue necesario generar un promedio de las facturas efectuadas por medio de transporte utilizado para realizar el servicio.
+```{r}
+resultado_tarifario <- aggregate(x = data$factura, by=list(data$transporte), mean)
+colnames(resultado_tarifario)<-c('Transporte', 'Tarifa')
+resultado_tarifario
+```
+- El resultado indica que la tarifa promedio por camión es de Q184.07, la de moto es de Q126.46 y la de pickup Q125.18.
+## Pregunta 3: Las tarifas actuales ¿son aceptables por el cliente? ¿Estamos en números rojos?
+-Por los resultados obtenidos anteriormete en el estado de resultados es posible determinar que no se está en números rojos,
+ya que la utilidad bruta es positiva. 
+
+-Para terminar si las tarifas actuales son aceptables por el cliente,  se generó una distribución de la cantidad de servicios realizados por mes. Esto se realizó con el propósito de poder detectar la existencia de algún tipo de tendencia a la baja en servicios o reparaciones proporcionadas por la empresa. 
+```{r}
+reparaciones_mes <- data %>%group_by(reparaciones_mes= month(Fecha)) %>%count(ID)
+reparaciones_mes <- reparaciones_mes %>%group_by(reparaciones_mes) %>%summarise(total = sum(n))
+
+reparaciones_mes 
 
 ```
 
 ```{r}
-df <- read_delim("c1.csv", 
-                 ",", escape_double = FALSE, trim_ws = TRUE)
-df %>% 
-  summarise(postes_distintos= n_distinct(ID)) ##Esto nos indica que hay 74239 postes distintos.
+barplot(reparaciones_mes$total, names.arg = reparaciones_mes$reparaciones_mes, las=2, main="Reparaciones y/o Servicios por mes",  col="#38A897", xlab="mes", ylab = "servicios efectuados")
 ```
+-En la gráfica anterior es posible observar como  el volumen de reparaciones y/o servicios por mes se mantuvo constante, lo cual es un indicador de que los clientes sí se mantienen satisfechos con las tarifas. También es posible observar que en el mes de febrero hubo una pequeña disminución en el numero de servicios brindados.
 
+## Pregunta 4: ¿Cuándo podríamos perderle a un mantenimiento y/o reparación?
 ```{r}
-df %>% 
-  summarise(ubicaciones_distintas = n_distinct(origen)) ##4 ubicaciones distintas de salida.
+perdidas_mant_reparacion <- data %>% filter(Ganancia < 0) 
+perdidas_mant_reparacion
 ```
+-Es posible observar que no hubo algún tipo de pérdida, pero sí podrían surgir por los siguientes factores: 
 
-```{r}
-##elimina el símbolo "Q" de todas las columnas relevantes en mi dataframe `df`, las convierte en datos numéricos, elimina las columnas 23 a 28 y muestra el resultado en una vista.
-df <- df %>% mutate(Camion_5 = as.numeric(gsub("Q", "", Camion_5)))
-df <- df %>% mutate(directoCamion_5 = as.numeric(gsub("Q", "", directoCamion_5)))
-df <- df %>% mutate(fijoCamion_5 = as.numeric(gsub("Q", "", fijoCamion_5)))
-
-df <- df %>% mutate(Pickup = as.numeric(gsub("Q", "", Pickup)))
-df <- df %>% mutate(directoPickup = as.numeric(gsub("Q", "", directoPickup)))
-df <- df %>% mutate(fijoPickup = as.numeric(gsub("Q", "", fijoPickup)))
-
-df <- df %>% mutate(Moto = as.numeric(gsub("Q", "", Moto)))
-df <- df %>% mutate(directoMoto = as.numeric(gsub("Q", "", directoMoto)))
-df <- df %>% mutate(fijoMoto = as.numeric(gsub("Q", "", fijoMoto)))
-
-df <- df %>% mutate(factura = as.numeric(gsub("Q", "", factura)))
-
-df[23:28] <- list(NULL)
-View(df)
-
-```
-
-```{r}
-##cuenta y ordena los postes más visitados por su "ID", guarda los resultados en un archivo "postes.xlsx" y muestra los datos en una vista.
-postes_mas_visitados <-df %>% 
-  select(ID) 
-
-postes_mas_visitados <- postes_mas_visitados %>%   group_by(ID) %>% 
-  summarise(cantidad_de_visitas = n ()) %>% 
-  arrange(desc(cantidad_de_visitas))
-
-
-write_xlsx(postes_mas_visitados, "postes.xlsx")
-
-View(postes_mas_visitados)
-```
-
-```{r}
-#selecciona datos del camión en el dataframe, cuenta y ordena las combinaciones de valores en las columnas `5-30`, `30-45`, `45-75`, `75-120`, y `120+` en el dataframe `camion1`.
-camion <- df %>% 
-  select(Camion_5,directoCamion_5,fijoCamion_5,factura,height, origen, Cod, ID, Fecha) 
+  -Factor externo que provoque el aumento de costos fijos o variables. 
+  -Cuando el precio  por proporcionar algún servicio no cubra los costos del mismo. 
   
-camion1 <- df %>% 
-  select(ID,Camion_5,`5-30`,`30-45` , `45-75` , `75-120` , `120+`) %>% 
-  drop_na("Camion_5")
-
-View(camion1)
-
-camion1 %>% 
-  group_by(`5-30`,`30-45` , `45-75` , `75-120` , `120+`) %>% 
-  summarise(cantidad_veces = n ()) %>% 
-  arrange(desc(cantidad_veces))
+## Pregunta 5: ¿Debemos abrir más centros de distribución?
+- Para poder terminar si es necesario que se abran más centros de distribución, se realizó un conteo de la cantidad de servicios que despacha cada una de las sedes. 
+```{r}
+distribucion <- count(data, data$origen)
+colnames(distribucion)<-c('origen', 'Servicios')
+distribucion$Servicios <- (distribucion$Servicios)/1000
 
 ```
 
 ```{r}
-#limpieza de datos, cálculos de estadísticas y tarifas para el camión.
+barplot(distribucion$Servicios, names.arg = distribucion$origen, las=2, main="Viajes por centro de distribución (miles)",  col="#75A28A" )
+```
 
-# Eliminar filas con valores NA del dataframe camion
-camion <- na.omit(camion)
+-Como se puede observar en la gráfica, las sedes 150224 y 150277 realizan una cantidad de servicios mucho más alta que las demás, por lo que sí sería adecuado abrir otra lo mas recomendable en una ubicacion entre estas dos para que sea posible alivianar un poco la carga de las sedes mencionadas.
 
-# Calcular el total de gasto del camión
-total_gasto_camion <- sum(camion$Camion_5)
+## Estrategias a seguir: 
+-Alteración en las tarifas actuales. Actualmente los clientes  han estado de acuerdo con las tarifas,  por lo que se podría experimentar un poco y aumentar el precio de las mismas.
 
-uso_camion <- 62267
+-Considerar la opción de contar con nuevos puntos de origen que alivianen la carga de los centros de distribución que realizan más servicios que los demás. 
 
-total_costofijo_camion <- sum(camion$fijoCamion_5)
-total_costodirecto_camion <- sum(camion$directoCamion_5)
-total_factura_camion <- sum(camion$factura)
+## “80-20” de factura (puede variar el porcentaje) y cuáles postes requieren de más mantenimiento.
 
-total_ganancia_camion <- total_factura_camion - total_gasto_camion
-camion %>% 
-  group_by(origen) %>% 
-  summarise(Cantidad_de_salidas = n ()) %>% 
-  arrange(desc(Cantidad_de_salidas))
-
-camion %>% 
-  group_by(Cod) %>% 
-  summarise(Cantidad_de_caso = n ()) %>% 
-  arrange(desc(Cantidad_de_caso))
-
-camion %>% 
-  group_by(height) %>% 
-  summarise(altura_de_poste = n ()) %>% 
-  arrange(desc(altura_de_poste))
-
-
-tarifa_camion <- sum(camion$factura) / uso_camion
-
-
+```{r}
+options(scipen = 999)     
+mantenimiento<- data %>%group_by(Cod) %>%summarise(Total = sum(factura)/1000)
+mantenimiento <- mantenimiento[order(-mantenimiento$Total),]
 ```
 
 ```{r}
-##recolección de datos relacionados con las pickups, realiza un análisis y conteo de combinaciones de valores en las columnas `5-30`, `30-45`, `45-75`, `75-120` y `120+` en las pickups.
-Pickup <- df %>% 
-  select(Pickup,directoPickup,fijoPickup,factura,height, origen, Cod, ID, Fecha)
+barplot(mantenimiento$Total, names.arg = mantenimiento$Cod, las=2, main="80-20 Postes por servicio (miles)", cex.names = 0.6, ylim = c(0,15000),  col="#75A28A", ylab= "cantidad (miles)")
+```
 
-Pickup1 <- df %>% 
-  select(ID,Pickup,`5-30`,`30-45` , `45-75` , `75-120` , `120+`) %>% 
-  drop_na("Pickup")
+-Se buscó una manera eficiente de agrupar los datos por tipo de servicio brindado. Es posible observar en la gráfia que el servicio que más ingresos representa el es servicio de "revisión", seguido de "verificación de medidores". 
 
-Pickup <- na.omit(Pickup)
-View(Pickup)
+```{r}
+data <- data %>% 
+  group_by(rangos)
 
-Pickup1 %>% 
-  group_by(`5-30`,`30-45` , `45-75` , `75-120` , `120+`) %>% 
-  summarise(cantidad_veces = n ()) %>% 
-  arrange(desc(cantidad_veces))
 
+efectividad <- data  %>% summarise(
+  n_servicios = length(ID),
+  costo_total = sum(costo_total),
+  ingreso = sum(factura),
+  ganancia = (sum(factura) - sum(costo_total))) %>%
+  arrange(desc(ganancia))
 ```
 
 ```{r}
-##calcula estadísticas relacionadas con las pickups, incluyendo gastos, costos fijos y directos, ingresos, ganancias, y tarifa promedio, además de contar y ordenar datos por origen, código, y altura del poste.
-uso_Pickup <- 195733
-total_gasto_Pickup <- sum(Pickup$Pickup)
-total_costofijo_Pickup <- sum(Pickup$fijoPickup)
-total_costofijo_Pickup
-
-total_costodirecto_Pickup <- sum(Pickup$directoPickup)
-total_costodirecto_Pickup
-total_factura_Pickup <- sum(Pickup$factura)
-total_factura_Pickup
-
-total_ganancia_Pickup <- total_factura_Pickup - total_gasto_Pickup
-
-Pickup %>% 
-  group_by(origen) %>% 
-  summarise(Cantidad_de_salidas = n ()) %>% 
-  arrange(desc(Cantidad_de_salidas))
-
-Pickup %>% 
-  group_by(Cod) %>% 
-  summarise(Cantidad_de_caso = n ()) %>% 
-  arrange(desc(Cantidad_de_caso))
-
-Pickup %>% 
-  group_by(height) %>% 
-  summarise(altura_de_poste = n ()) %>% 
-  arrange(desc(altura_de_poste))
-
-
-tarifa_pickup <- sum(Pickup$factura) / uso_Pickup
-
+efectividad
 ```
+En la tabla anterior se puede observar más detalladamente la cantidad de servicios que se brindan en el intervalo de tiempo que mas ganancias representa, así como tambiénn el costo total que representan. 
 
 ```{r}
-##análisis de datos relacionados con motocicletas, incluyendo conteo y ordenamiento de combinaciones de valores en columnas específicas.
-Moto <- df %>% 
-  select(Moto,directoMoto,fijoMoto,factura,height,origen, Cod, ID, Fecha)
-
-Moto1 <- df %>% 
-  select(ID,Moto,`5-30`,`30-45` , `45-75` , `75-120` , `120+`) %>% 
-  drop_na("Moto")
-
-Moto <- na.omit(Moto)
-View(Moto)
-
-
-Moto1 %>% 
-  group_by(`5-30`,`30-45` , `45-75` , `75-120` , `120+`) %>% 
-  summarise(cantidad_veces = n ()) %>% 
-  arrange(desc(cantidad_veces))
-  
+barplot(efectividad$n_servicios, names.arg = efectividad$rangos, main="Cantidad de Viajes por Tiempo", cex.names = 0.7, col="#75A28A", xlab= "tiempo", ylab= "viajes (miles)")
 ```
 
-```{r}
-##calcula estadísticas relacionadas con motocicletas, como gastos, costos fijos y directos, ingresos, ganancias, y tarifa promedio, además de contar y ordenar datos por origen, código y altura del poste.
-uso_Moto <- 5725
-total_gasto_Moto <- sum(Moto$Moto)
-total_costofijo_Moto <- sum(Moto$fijoMoto)
-total_costofijo_Moto
-total_costodirecto_Moto <- sum(Moto$directoMoto)
-total_costodirecto_Moto
-total_factura_Moto <- sum(Moto$factura)
-total_factura_Moto
-total_ganancia_Moto <- total_factura_Moto - total_gasto_Moto
-
-Moto %>% 
-  group_by(origen) %>% 
-  summarise(Cantidad_de_salidas = n ()) %>% 
-  arrange(desc(Cantidad_de_salidas))
-
-Moto %>% 
-  group_by(Cod) %>% 
-  summarise(Cantidad_de_caso = n ()) %>% 
-  arrange(desc(Cantidad_de_caso))
-
-Moto %>% 
-  group_by(height) %>% 
-  summarise(altura_de_poste = n ()) %>% 
-  arrange(desc(altura_de_poste))
-
-tarifa_moto <- sum(Moto$factura) / uso_Moto
-```
-
-```{r}
-##Calcula el total facturado, el total de costos fijos, el total de costos directos y la ganancia total sumando los valores previamente calculados para camiones, motos y pickups.
-total_facturado <- total_factura_camion + total_factura_Moto + total_factura_Pickup 
-total_facturado
-
-total_costo_fijo <- total_costofijo_camion+total_costofijo_Moto+total_costofijo_Pickup
-total_costo_fijo
-
-total_costo_directo <- total_costodirecto_camion+total_costodirecto_Moto+total_costodirecto_Pickup
-total_costo_directo
-
-
-ganancia_total <- total_facturado - (total_costo_directo+total_costo_fijo)
-ganancia_total
-
-```
-
+Es posible identificar que los viajes más rentables son aquellos que se encuentran en un rango de 75-120 minutos.
